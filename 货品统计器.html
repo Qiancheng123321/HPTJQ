@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>货品录入统计系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        :root {
+            --main: #a8e6cf;
+            --sub: #dcedc1;
+            --warm: #ffd3b6;
+            --pink: #ffaaa5;
+            --text: #555;
+            --white: #fff;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        body {
+            background: #f7f9f8;
+            color: var(--text);
+        }
+        .page {
+            display: none;
+            max-width: 550px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .page.active {
+            display: block;
+        }
+        .title {
+            text-align: center;
+            margin: 15px 0 25px;
+            font-size: 23px;
+            color: #666;
+        }
+        /* 滚轮选择器 */
+        .wheel-box {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px 0;
+        }
+        .wheel {
+            width: 90px;
+            height: 140px;
+            overflow: hidden;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+        .wheel::before,
+        .wheel::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 46px;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .wheel::before {
+            top: 0;
+            background: linear-gradient(to bottom, #fff, transparent);
+        }
+        .wheel::after {
+            bottom: 0;
+            background: linear-gradient(to top, #fff, transparent);
+        }
+        .wheel-line {
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 46px;
+            border-top: 2px solid var(--main);
+            border-bottom: 2px solid var(--main);
+            pointer-events: none;
+        }
+        .wheel-list {
+            transition: transform 0.25s ease;
+            text-align: center;
+        }
+        .wheel-item {
+            height: 46px;
+            line-height: 46px;
+            font-size: 17px;
+        }
+        .wheel-item.active {
+            font-weight: bold;
+            color: var(--pink);
+        }
+        /* 输入区域 */
+        .input-item {
+            margin: 16px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            background: var(--white);
+        }
+        input:focus, select:focus {
+            border-color: var(--main);
+        }
+        /* 按钮 */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            margin: 10px 0;
+            background: var(--main);
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn-sub {
+            background: var(--sub);
+        }
+        .btn-warm {
+            background: var(--warm);
+        }
+        .btn-del {
+            background: #ffaaa5;
+            color: #fff;
+        }
+        /* 货品标签 */
+        .tag-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .tag {
+            background: var(--sub);
+            padding: 6px 11px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .del-btn {
+            background: #ffaaa5;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            padding: 0;
+        }
+        /* 货品行 */
+        .goods-group {
+            margin: 20px 0;
+        }
+        .goods-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .goods-row select,
+        .goods-row input {
+            flex: 1;
+        }
+        /* 已录入房间列表 */
+        .record-list {
+            margin: 25px 0;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .record-item {
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .record-del {
+            background: #ff6b6b;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .record-info {
+            flex: 1;
+        }
+        .record-addr {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #444;
+        }
+        .record-goods {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+        /* 表格 */
+        .table-box {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: var(--main);
+            padding: 11px;
+            border-radius: 6px;
+        }
+        td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .date-row {
+            background: #f0f9f4;
+            font-weight: bold;
+            text-align: center;
+        }
+        .total-row {
+            background: #fff5e8;
+            font-weight: bold;
+            color: #ff7a59;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面1：日期+当日货品 -->
+    <div class="page active" id="page1">
+        <div class="title">日期与货品设置</div>
+        <div class="wheel-box">
+            <div class="wheel" id="wheelY">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listY"></div>
+            </div>
+            <div class="wheel" id="wheelM">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listM"></div>
+            </div>
+            <div class="wheel" id="wheelD">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listD"></div>
+            </div>
+        </div>
+        <div class="input-item">
+            <label>添加当日货品（可多次添加）</label>
+            <input type="text" id="goodsInput" placeholder="输入货品名称">
+            <button class="btn btn-sub" onclick="addGoods()">添加货品</button>
+        </div>
+        <div class="tag-group" id="tagBox"></div>
+        <button class="btn" onclick="saveAndNext()">保存并进入录入</button>
+    </div>
+    <!-- 页面2：详细录入 → 双模式可选 -->
+    <div class="page" id="page2">
+        <div class="title">房间货品录入</div>
+        <div class="input-item">
+            <label>🔹 自定义房间名称（填写则优先使用，不填则用滚轮选择）</label>
+            <input type="text" id="roomName" placeholder="例如：物业办公室、储藏室、门卫室">
+        </div>
+        <div class="input-item" style="text-align:center; margin:10px 0;">
+            <label>🔸 或使用滚轮选择房间（不填自定义名称时生效）</label>
+        </div>
+        <div class="wheel-box">
+            <div class="wheel" id="wheelArea">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listArea"></div>
+            </div>
+            <div class="wheel" id="wheelBuild">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listBuild"></div>
+            </div>
+        </div>
+        <div class="wheel-box">
+            <div class="wheel" id="wheelFloor">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listFloor"></div>
+            </div>
+            <div class="wheel" id="wheelRoom">
+                <div class="wheel-line"></div>
+                <div class="wheel-list" id="listRoom"></div>
+            </div>
+        </div>
+        <div class="goods-group" id="goodsGroup">
+            <div class="goods-row">
+                <select class="gSelect"></select>
+                <input type="number" class="gNum" placeholder="数量" min="1">
+            </div>
+        </div>
+        <button class="btn btn-sub" onclick="addRow()">添加一行货品</button>
+        <button class="btn" onclick="saveRoom()">保存当前房间</button>
+        <button class="btn btn-warm" onclick="showStats()">统计并查看</button>
+        <button class="btn" onclick="backToPage1()">返回上一页</button>
+        <!-- 已录入房间列表 -->
+        <div class="record-list" id="recordList"></div>
+    </div>
+    <!-- 页面3：统计 -->
+    <div class="page" id="page3">
+        <div class="title">数据统计结果</div>
+        <div class="table-box" id="tableBox"></div>
+        <button class="btn" onclick="doShare()">转发结果</button>
+        <button class="btn btn-sub" onclick="exportExcel()">导出Excel</button>
+        <button class="btn btn-warm" onclick="backToInput()">返回录入</button>
+    </div>
+    <script>
+        let app = {
+            date: "",
+            goods: [],
+            records: []
+        };
+        // 初始化
+        window.onload = function () {
+            initAllWheels();
+        };
+        // 初始化所有滚轮
+        function initAllWheels() {
+            // 年月日
+            fillWheel("listY", Array.from({ length: 7 }, (_, i) => 2024 + i + "年"));
+            fillWheel("listM", Array.from({ length: 12 }, (_, i) => (i + 1) + "月"));
+            fillWheel("listD", Array.from({ length: 31 }, (_, i) => (i + 1) + "日"));
+            
+            // 小区
+            fillWheel("listArea", ["A区", "B区", "C区", "D区"]);
+            
+            // 绑定滚轮切换楼栋
+            bindAreaChange();
+            // 楼层 1-29
+            fillWheel("listFloor", Array.from({ length: 29 }, (_, i) => (i + 1) + "层"));
+            
+            // 房间 01-04
+            fillWheel("listRoom", ["01室", "02室", "03室", "04室"]);
+            // 绑定滑动
+            bindWheel("wheelY");
+            bindWheel("wheelM");
+            bindWheel("wheelD");
+            bindWheel("wheelArea");
+            bindWheel("wheelFloor");
+            bindWheel("wheelRoom");
+        }
+        // 分区切换楼栋（按你最新要求）
+        function bindAreaChange() {
+            const areaWheel = document.getElementById('wheelArea');
+            const updateBuilds = () => {
+                const area = getWheel('wheelArea');
+                let builds = [];
+                
+                if (area === 'A区') {
+                    for (let i = 43; i <= 52; i++) builds.push(i + '号楼');
+                } else if (area === 'B区') {
+                    for (let i = 36; i <= 42; i++) builds.push(i + '号楼');
+                } else if (area === 'C区') {
+                    for (let i = 21; i <= 34; i++) builds.push(i + '号楼');
+                } else if (area === 'D区') {
+                    for (let i = 1; i <= 20; i++) builds.push(i + '号楼');
+                }
+                
+                const list = document.getElementById('listBuild');
+                list.innerHTML = '';
+                fillWheel('listBuild', builds);
+                bindWheel('wheelBuild');
+            };
+            const observer = new MutationObserver(updateBuilds);
+            observer.observe(areaWheel, {
+                subtree: true,
+                attributes: true
+            });
+            updateBuilds();
+        }
+        // 填充滚轮内容
+        function fillWheel(listId, arr) {
+            let el = document.getElementById(listId);
+            arr.forEach(item => {
+                let div = document.createElement("div");
+                div.className = "wheel-item";
+                div.innerText = item;
+                el.appendChild(div);
+            });
+            el.querySelector(".wheel-item").classList.add("active");
+        }
+        // 滚轮滑动逻辑（修复UC浏览器滚动穿透）
+        function bindWheel(wheelId) {
+            let wheel = document.getElementById(wheelId);
+            let list = wheel.querySelector(".wheel-list");
+            let items = list.querySelectorAll(".wheel-item");
+            let h = 46;
+            let startY, moveY, current = 0;
+            wheel.addEventListener("touchstart", e => {
+                startY = e.touches[0].clientY;
+            }, { passive: false });
+            wheel.addEventListener("touchmove", e => {
+                e.stopPropagation();
+                e.preventDefault();
+                moveY = e.touches[0].clientY - startY;
+                list.style.transform = `translateY(${current + moveY}px)`;
+            }, { passive: false });
+            wheel.addEventListener("touchend", () => {
+                let i = Math.round(-(current + moveY) / h);
+                i = Math.max(0, Math.min(i, items.length - 1));
+                current = -i * h;
+                list.style.transform = `translateY(${current}px)`;
+                items.forEach((it, idx) => it.classList.toggle("active", idx === i));
+            });
+        }
+        // 获取滚轮选中值
+        function getWheel(wheelId) {
+            return document.querySelector("#" + wheelId + " .wheel-item.active").innerText;
+        }
+        // 检查货品是否被使用
+        function isGoodsUsed(name) {
+            for (let r of app.records) {
+                for (let it of r.items) {
+                    if (it.name === name) return true;
+                }
+            }
+            return false;
+        }
+        // 添加当日货品
+        function addGoods() {
+            let val = document.getElementById("goodsInput").value.trim();
+            if (!val || app.goods.includes(val)) return;
+            app.goods.push(val);
+            renderTags();
+            document.getElementById("goodsInput").value = "";
+        }
+        // 删除货品
+        function deleteGoods(name) {
+            if (isGoodsUsed(name)) {
+                alert(`货品【${name}】已使用，无法删除！`);
+                return;
+            }
+            app.goods = app.goods.filter(g => g !== name);
+            renderTags();
+        }
+        // 渲染货品标签（带删除按钮）
+        function renderTags() {
+            let box = document.getElementById("tagBox");
+            box.innerHTML = app.goods.map(g => `
+                <span class="tag">
+                    ${g}
+                    <button class="del-btn" onclick="deleteGoods('${g}')">×</button>
+                </span>
+            `).join("");
+        }
+        // 保存并下一步
+        function saveAndNext() {
+            if (app.goods.length === 0) return alert("请至少添加一个货品");
+            app.date = getWheel("wheelY") + getWheel("wheelM") + getWheel("wheelD");
+            showPage(2);
+            refreshSelect();
+            renderRecordList();
+        }
+        // 返回页面1
+        function backToPage1() {
+            showPage(1);
+        }
+        // 刷新货品下拉框
+        function refreshSelect() {
+            let sels = document.querySelectorAll(".gSelect");
+            sels.forEach(sel => {
+                sel.innerHTML = `<option value="">--选择货品--</option>` +
+                    app.goods.map(g => `<option value="${g}">${g}</option>`).join("");
+            });
+        }
+        // 添加货品行
+        function addRow() {
+            let g = document.createElement("div");
+            g.className = "goods-row";
+            g.innerHTML = `
+                <select class="gSelect"></select>
+                <input type="number" class="gNum" placeholder="数量" min="1">
+            `;
+            document.getElementById("goodsGroup").appendChild(g);
+            refreshSelect();
+        }
+        // 保存房间 → 双模式智能判断
+        function saveRoom() {
+            let customName = document.getElementById("roomName").value.trim();
+            let wheelAddr = getWheel("wheelArea") + getWheel("wheelBuild") + getWheel("wheelFloor") + getWheel("wheelRoom");
+            
+            let finalAddr = customName || wheelAddr;
+            
+            let rows = document.querySelectorAll(".goods-row");
+            let items = [];
+            rows.forEach(r => {
+                let name = r.querySelector(".gSelect").value;
+                let num = parseInt(r.querySelector(".gNum").value) || 0;
+                if (name && num > 0) items.push({ name, num });
+            });
+            
+            if (items.length === 0) return alert("请填写完整货品信息");
+            app.records.push({ addr: finalAddr, items });
+            alert("保存成功！");
+            
+            document.getElementById("roomName").value = "";
+            document.getElementById("goodsGroup").innerHTML = `
+                <div class="goods-row">
+                    <select class="gSelect"></select>
+                    <input type="number" class="gNum" placeholder="数量" min="1">
+                </div>
+            `;
+            refreshSelect();
+            renderRecordList(); // 刷新列表
+        }
+        // 渲染已录入房间列表（按录入时间顺序）
+        function renderRecordList() {
+            let list = document.getElementById("recordList");
+            if (app.records.length === 0) {
+                list.innerHTML = `<div style="text-align:center; color:#999; padding:15px;">暂无录入房间</div>`;
+                return;
+            }
+            list.innerHTML = app.records.map((record, index) => `
+                <div class="record-item">
+                    <button class="record-del" onclick="deleteRecord(${index})">×</button>
+                    <div class="record-info">
+                        <div class="record-addr">${record.addr}</div>
+                        <div class="record-goods">${record.items.map(it => `${it.name} × ${it.num}`).join('  ')}</div>
+                    </div>
+                </div>
+            `).join("");
+        }
+        // 删除单条房间记录
+        function deleteRecord(index) {
+            if (!confirm("确定删除该房间记录吗？")) return;
+            app.records.splice(index, 1);
+            renderRecordList();
+        }
+        // 智能排序：自定义 → A→B→C→D → 楼号/楼层/房间 从小到大
+        function sortRecords() {
+            const areaOrder = { 'A区': 1, 'B区': 2, 'C区': 3, 'D区': 4 };
+            app.records.sort((a, b) => {
+                const aIsCustom = !/^[A-D]区\d+号楼\d+层\d+室$/.test(a.addr);
+                const bIsCustom = !/^[A-D]区\d+号楼\d+层\d+室$/.test(b.addr);
+                if (aIsCustom && !bIsCustom) return -1;
+                if (!aIsCustom && bIsCustom) return 1;
+                if (aIsCustom && bIsCustom) return a.addr.localeCompare(b.addr);
+                const aArea = a.addr.match(/^[A-D]区/)[0];
+                const bArea = b.addr.match(/^[A-D]区/)[0];
+                if (areaOrder[aArea] !== areaOrder[bArea]) {
+                    return areaOrder[aArea] - areaOrder[bArea];
+                }
+                const aBuild = parseInt(a.addr.match(/(\d+)号楼/)[1]);
+                const bBuild = parseInt(b.addr.match(/(\d+)号楼/)[1]);
+                if (aBuild !== bBuild) return aBuild - bBuild;
+                const aFloor = parseInt(a.addr.match(/(\d+)层/)[1]);
+                const bFloor = parseInt(b.addr.match(/(\d+)层/)[1]);
+                if (aFloor !== bFloor) return aFloor - bFloor;
+                const aRoom = parseInt(a.addr.match(/(\d+)室/)[1]);
+                const bRoom = parseInt(b.addr.match(/(\d+)室/)[1]);
+                return aRoom - bRoom;
+            });
+        }
+        // 显示统计
+        function showStats() {
+            if (app.records.length === 0) return alert("暂无录入数据");
+            
+            sortRecords();
+            let totalMap = {};
+            app.records.forEach(r => {
+                r.items.forEach(it => {
+                    totalMap[it.name] = (totalMap[it.name] || 0) + it.num;
+                });
+            });
+            let html = `<table>
+                <tr class="date-row"><td colspan="4">${app.date}</td></tr>
+                <tr><th>房间地址</th><th>货品明细</th><th>已送达</th><th>已付款</th></tr>`;
+            
+            app.records.forEach(r => {
+                let txt = r.items.map(it => it.name + " × " + it.num).join("<br>");
+                html += `<tr>
+                    <td>${r.addr}</td>
+                    <td>${txt}</td>
+                    <td>□</td>
+                    <td>□</td>
+                </tr>`;
+            });
+            let totalText = Object.entries(totalMap).map(([k,v])=>`${k}：${v}`).join(" ｜ ");
+            html += `<tr class="total-row"><td colspan="4">货品总计：${totalText}</td></tr>`;
+            html += "</table>";
+            
+            document.getElementById("tableBox").innerHTML = html;
+            showPage(3);
+        }
+        // 分享
+        function doShare() {
+            let txt = `【货品统计】\n日期：${app.date}\n`;
+            app.records.forEach(r => {
+                txt += `${r.addr}：`;
+                r.items.forEach(it => txt += `${it.name}×${it.num} `);
+                txt += `\n`;
+            });
+            if (navigator.share) navigator.share({ title: "统计结果", text: txt });
+            else alert(txt);
+        }
+        // 导出Excel
+        function exportExcel() {
+            let csv = "\uFEFF日期,房间地址,货品名称,数量,已送达,已付款\n";
+            app.records.forEach(r => {
+                r.items.forEach(it => {
+                    csv += `${app.date},${r.addr},${it.name},${it.num},,\n`;
+                });
+            });
+            let blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `货品统计_${app.date}.csv`;
+            a.click();
+        }
+        // 切换页面
+        function showPage(n) {
+            document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+            document.getElementById("page" + n).classList.add("active");
+        }
+        // 返回录入
+        function backToInput() {
+            showPage(2);
+        }
+    </script>
+</body>
+</html>
